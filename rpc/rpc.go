@@ -48,3 +48,25 @@ func DecodeMessage(msg []byte) (method string, content []byte, err error) {
 
 	return baseMessage.Method, content[:contentLength], nil
 }
+
+// This is the default Split() function that comes with the scanner()
+// type SplitFunc func(data []byte, atEOF bool) (advance int, token []byte, err error)
+func Split(data []byte, _ bool) (advance int, token []byte, err error) {
+	header, content, found := bytes.Cut(data, []byte{'\r', '\n', '\r', '\n'})
+	if !found {
+		return 0, nil, nil
+	}
+
+	contentLengthBytes := header[len("Content-Length: "):]
+	contentLength, err := strconv.Atoi(string(contentLengthBytes))
+	if err != nil {
+		return 0, nil, err
+	}
+
+	if len(content) < contentLength {
+		return 0, nil, nil
+	}
+
+	totalLength := len(header) + 4 + contentLength
+	return totalLength, data[:totalLength], nil
+}
