@@ -20,25 +20,31 @@ func EncodeMessage(msg any) string {
 	return fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(content), content)
 }
 
+type BaseMessage struct {
+	Method string `json:"method"`
+}
+
 // The bytes.Cut() function accepts two byte-slices and works as a partition
 // funcion by identifying the first occurance of the subsequence of bytes in
 // the msg. and partitioning around it. This is also the reason why we are using
 // []byte as type of msg instead of doing strings. Also, []byte is faster to
 // work with as compared to strings or chars
-func DecodeMessage(msg []byte) (int, error) {
+func DecodeMessage(msg []byte) (method string, content []byte, err error) {
 	header, content, found := bytes.Cut(msg, []byte{'\r', '\n', '\r', '\n'})
 	if !found {
-		return 0, errors.New("Did not find a separator")
+		return "", nil, errors.New("Did not find a separator")
 	}
 
 	contentLengthBytes := header[len("Content-Length: "):]
 	contentLength, err := strconv.Atoi(string(contentLengthBytes))
 	if err != nil {
-		return 0, err
+		return "", nil, err
 	}
 
-	// TODO: Use content somewhere at a later point
-	_ = content
+	var baseMessage BaseMessage
+	if err := json.Unmarshal(content[:contentLength], &baseMessage); err != nil {
+		return "", nil, err
+	}
 
-	return contentLength, nil
+	return baseMessage.Method, content[:contentLength], nil
 }
